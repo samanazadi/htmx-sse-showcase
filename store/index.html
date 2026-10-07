@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Store Events</title>
+    <meta content="mode:cors" name="htmx-config">
+
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/htmx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/ext/hx-sse.min.js"></script>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 2rem;
+        }
+
+        #events {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 2rem;
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: .5rem 1rem;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+<h1>Store Events</h1>
+<button
+        id="connect"
+        hx-on:click="this.disabled = true"
+>
+    Start
+</button>
+<div
+        id="events"
+        hx-sse:connect="https://api.sondahub.com/v1/store/events"
+        hx-trigger="click from:#connect"
+        hx-on:inventory="addInventoryRow(event)"
+        hx-on:orders="addOrderRow(event)"
+>
+    <section>
+    <h2>Orders <small>(newest first)</small></h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Time</th>
+            <th>Order</th>
+            <th>Customer</th>
+            <th>Status</th>
+            <th>Total</th>
+        </tr>
+        </thead>
+        <tbody id="orders"></tbody>
+    </table>
+    </section>
+
+    <section>
+    <h2>Inventory <small>(newest first)</small></h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Time</th>
+            <th>SKU</th>
+            <th>Product</th>
+            <th>Warehouse</th>
+            <th>Delta</th>
+            <th>Reason</th>
+        </tr>
+        </thead>
+        <tbody id="inventory"></tbody>
+    </table>
+    </section>
+</div>
+
+<script>
+    function addOrderRow(event) {
+        const msg = JSON.parse(event.detail.data);
+        const row = document.createElement('tr');
+
+        for (const value of [
+            new Date(msg.ts).toLocaleTimeString(),
+            msg.data.number,
+            msg.data.customer_id,
+            `${msg.data.previous} → ${msg.data.status}`,
+            msg.data.total.toFixed(2),
+        ]) {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            row.append(cell);
+        }
+        document.getElementById('orders').prepend(row);
+    }
+
+    function addInventoryRow(event) {
+        const msg = JSON.parse(event.detail.data);
+        const row = document.createElement('tr');
+
+        for (const value of [
+            new Date(msg.ts).toLocaleTimeString(),
+            msg.data.sku,
+            msg.data.name,
+            msg.data.warehouse,
+            msg.data.delta,
+            msg.data.reason,
+        ]) {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            row.append(cell);
+        }
+        document.getElementById('inventory').prepend(row);
+    }
+</script>
+</body>
+</html>
